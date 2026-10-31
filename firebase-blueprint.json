@@ -1,0 +1,380 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public user profile for contact discovery, avatar display, and E2EE key fingerprint verification.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "description": "Display username for search and chat",
+          "minLength": 2,
+          "maxLength": 50
+        },
+        "handle": {
+          "type": "string",
+          "description": "Unique lowercase search handle",
+          "minLength": 2,
+          "maxLength": 40,
+          "pattern": "^[a-z0-9_\\-]+$"
+        },
+        "avatarUrl": {
+          "type": "string",
+          "description": "Uploaded avatar data URL or image URI",
+          "maxLength": 65536
+        },
+        "bio": {
+          "type": "string",
+          "description": "Short status or encryption bio",
+          "maxLength": 240
+        },
+        "personalPassbox": {
+          "type": "string",
+          "description": "6-character alphanumeric pairing passbox code",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "keyFingerprint": {
+          "type": "string",
+          "description": "Public E2EE key fingerprint",
+          "minLength": 4,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when profile was last updated"
+        }
+      },
+      "required": [
+        "uid",
+        "username",
+        "handle",
+        "avatarUrl",
+        "bio",
+        "personalPassbox",
+        "keyFingerprint",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ContactRequest": {
+      "title": "ContactRequest",
+      "description": "Person-to-person contact request between two users.",
+      "type": "object",
+      "properties": {
+        "fromUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "fromUsername": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 50
+        },
+        "fromAvatarUrl": {
+          "type": "string",
+          "maxLength": 65536
+        },
+        "fromPassbox": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "toUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "toUsername": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 50
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "declined"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "fromUid",
+        "fromUsername",
+        "fromAvatarUrl",
+        "fromPassbox",
+        "toUid",
+        "toUsername",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ContactEntry": {
+      "title": "ContactEntry",
+      "description": "Accepted contact entry stored in a user's contacts subcollection.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "contactUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 50
+        },
+        "avatarUrl": {
+          "type": "string",
+          "maxLength": 65536
+        },
+        "roomPassbox": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "ownerUid",
+        "contactUid",
+        "username",
+        "avatarUrl",
+        "roomPassbox",
+        "createdAt"
+      ]
+    },
+    "ChatGroup": {
+      "title": "ChatGroup",
+      "description": "Encrypted group chat metadata.",
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 60
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "passboxCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "creatorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "memberCount": {
+          "type": "number"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "groupId",
+        "name",
+        "description",
+        "passboxCode",
+        "creatorUid",
+        "memberCount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GroupMember": {
+      "title": "GroupMember",
+      "description": "Membership record inside a group subcollection.",
+      "type": "object",
+      "properties": {
+        "groupId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "memberUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 50
+        },
+        "role": {
+          "type": "string",
+          "enum": ["owner", "member"]
+        },
+        "invitedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "joinedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "groupId",
+        "memberUid",
+        "username",
+        "role",
+        "invitedByUid",
+        "joinedAt"
+      ]
+    },
+    "EncryptedMessage": {
+      "title": "EncryptedMessage",
+      "description": "End-to-end encrypted chat, Giphy GIF, voice note, or file message stored inside a room or group.",
+      "type": "object",
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "roomCode": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "senderUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["text", "gif", "voice", "file", "video-stream", "system"]
+        },
+        "ciphertextBase64": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 131072
+        },
+        "ivBase64": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 64
+        },
+        "saltBase64": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 64
+        },
+        "sha256Digest": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "messageId",
+        "roomCode",
+        "senderUid",
+        "senderName",
+        "kind",
+        "ciphertextBase64",
+        "ivBase64",
+        "saltBase64",
+        "sha256Digest",
+        "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Public user profiles for username search, avatar, and E2EE key fingerprint."
+    },
+    "/users/{userId}/contacts/{contactId}": {
+      "schema": { "$ref": "#/entities/ContactEntry" },
+      "description": "User's accepted contact list."
+    },
+    "/contactRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/ContactRequest" },
+      "description": "Pending, accepted, or declined contact requests between users."
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/ChatGroup" },
+      "description": "Encrypted group chat metadata."
+    },
+    "/groups/{groupId}/members/{memberUid}": {
+      "schema": { "$ref": "#/entities/GroupMember" },
+      "description": "Members belonging to a group chat."
+    },
+    "/groups/{groupId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/EncryptedMessage" },
+      "description": "Encrypted messages, Giphy GIFs, voice recordings, and files inside a group."
+    }
+  }
+}

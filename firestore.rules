@@ -1,0 +1,348 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 0: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidPassbox(code) {
+      return code is string && code.size() == 6 && code.matches('^[A-Z0-9]{6}$');
+    }
+
+    // Entity Blueprint Validators (Anti-Update-Gap)
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+          'uid', 'username', 'handle', 'avatarUrl', 'bio',
+          'personalPassbox', 'keyFingerprint', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'uid', 'username', 'handle', 'avatarUrl', 'bio',
+          'personalPassbox', 'keyFingerprint', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.uid) &&
+        data.uid == request.auth.uid &&
+        data.username is string && data.username.size() >= 2 && data.username.size() <= 50 &&
+        data.handle is string && data.handle.size() >= 2 && data.handle.size() <= 40 &&
+        data.handle.matches('^[a-z0-9_\\-]+$') &&
+        data.avatarUrl is string && data.avatarUrl.size() <= 65536 &&
+        data.bio is string && data.bio.size() <= 240 &&
+        isValidPassbox(data.personalPassbox) &&
+        data.keyFingerprint is string && data.keyFingerprint.size() >= 4 && data.keyFingerprint.size() <= 128 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidContactEntry(data, ownerUid, contactId) {
+      return data.keys().hasAll([
+          'ownerUid', 'contactUid', 'username', 'avatarUrl', 'roomPassbox', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'ownerUid', 'contactUid', 'username', 'avatarUrl', 'roomPassbox', 'createdAt'
+        ]) &&
+        isValidId(data.ownerUid) &&
+        data.ownerUid == request.auth.uid &&
+        data.ownerUid == ownerUid &&
+        isValidId(data.contactUid) &&
+        data.contactUid == contactId &&
+        data.username is string && data.username.size() >= 2 && data.username.size() <= 50 &&
+        data.avatarUrl is string && data.avatarUrl.size() <= 65536 &&
+        isValidPassbox(data.roomPassbox) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidContactRequest(data) {
+      return data.keys().hasAll([
+          'fromUid', 'fromUsername', 'fromAvatarUrl', 'fromPassbox',
+          'toUid', 'toUsername', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'fromUid', 'fromUsername', 'fromAvatarUrl', 'fromPassbox',
+          'toUid', 'toUsername', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.fromUid) &&
+        data.fromUsername is string && data.fromUsername.size() >= 2 && data.fromUsername.size() <= 50 &&
+        data.fromAvatarUrl is string && data.fromAvatarUrl.size() <= 65536 &&
+        isValidPassbox(data.fromPassbox) &&
+        isValidId(data.toUid) &&
+        data.fromUid != data.toUid &&
+        data.toUsername is string && data.toUsername.size() >= 2 && data.toUsername.size() <= 50 &&
+        data.status is string && data.status in ['pending', 'accepted', 'declined'] &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidChatGroup(data, groupId) {
+      return data.keys().hasAll([
+          'groupId', 'name', 'description', 'passboxCode',
+          'creatorUid', 'memberCount', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'name', 'description', 'passboxCode',
+          'creatorUid', 'memberCount', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.groupId) &&
+        data.groupId == groupId &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 60 &&
+        data.description is string && data.description.size() <= 240 &&
+        isValidPassbox(data.passboxCode) &&
+        isValidId(data.creatorUid) &&
+        data.memberCount is int && data.memberCount >= 1 && data.memberCount <= 500 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidGroupMember(data, groupId, memberUid) {
+      return data.keys().hasAll([
+          'groupId', 'memberUid', 'username', 'role', 'invitedByUid', 'joinedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'groupId', 'memberUid', 'username', 'role', 'invitedByUid', 'joinedAt'
+        ]) &&
+        isValidId(data.groupId) &&
+        data.groupId == groupId &&
+        isValidId(data.memberUid) &&
+        data.memberUid == memberUid &&
+        data.username is string && data.username.size() >= 2 && data.username.size() <= 50 &&
+        data.role is string && data.role in ['owner', 'member'] &&
+        isValidId(data.invitedByUid) &&
+        data.joinedAt is timestamp;
+    }
+
+    function isValidEncryptedMessage(data, messageId) {
+      return data.keys().hasAll([
+          'messageId', 'roomCode', 'senderUid', 'senderName',
+          'kind', 'ciphertextBase64', 'ivBase64', 'saltBase64', 'sha256Digest', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'messageId', 'roomCode', 'senderUid', 'senderName',
+          'kind', 'ciphertextBase64', 'ivBase64', 'saltBase64', 'sha256Digest', 'createdAt'
+        ]) &&
+        isValidId(data.messageId) &&
+        data.messageId == messageId &&
+        isValidPassbox(data.roomCode) &&
+        isValidId(data.senderUid) &&
+        data.senderUid == request.auth.uid &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 60 &&
+        data.kind is string && data.kind in ['text', 'gif', 'voice', 'file', 'video-stream', 'system'] &&
+        data.ciphertextBase64 is string && data.ciphertextBase64.size() >= 1 && data.ciphertextBase64.size() <= 131072 &&
+        data.ivBase64 is string && data.ivBase64.size() >= 8 && data.ivBase64.size() <= 64 &&
+        data.saltBase64 is string && data.saltBase64.size() >= 8 && data.saltBase64.size() <= 64 &&
+        data.sha256Digest is string && data.sha256Digest.size() >= 16 && data.sha256Digest.size() <= 128 &&
+        data.createdAt is timestamp;
+    }
+
+    function isGroupMember(groupId) {
+      return exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+    }
+
+    // 1. Public User Profiles (/users/{userId}) - Zero PII stored
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId);
+      allow list: if isSignedIn() && existing().uid is string && existing().uid.size() <= 128;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(userId) &&
+        userId == request.auth.uid &&
+        isValidUserProfile(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(userId) &&
+        userId == request.auth.uid &&
+        isValidUserProfile(incoming()) &&
+        incoming().uid == existing().uid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'username', 'handle', 'avatarUrl', 'bio', 'personalPassbox', 'keyFingerprint', 'updatedAt'
+        ]);
+
+      allow delete: if false;
+
+      // 2. User's Accepted Contacts Subcollection (/users/{userId}/contacts/{contactId})
+      match /contacts/{contactId} {
+        allow get: if isSignedIn() &&
+          isValidId(userId) &&
+          isValidId(contactId) &&
+          userId == request.auth.uid &&
+          exists(/databases/$(database)/documents/users/$(userId));
+
+        allow list: if isSignedIn() &&
+          userId == request.auth.uid &&
+          existing().ownerUid == request.auth.uid;
+
+        allow create: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(contactId) &&
+          userId == request.auth.uid &&
+          isValidContactEntry(incoming(), userId, contactId) &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/users/$(userId)) &&
+          exists(/databases/$(database)/documents/users/$(contactId));
+
+        allow update: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(contactId) &&
+          userId == request.auth.uid &&
+          isValidContactEntry(incoming(), userId, contactId) &&
+          incoming().ownerUid == existing().ownerUid &&
+          incoming().contactUid == existing().contactUid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['username', 'avatarUrl', 'roomPassbox']) &&
+          exists(/databases/$(database)/documents/users/$(userId));
+
+        allow delete: if isVerifiedUser() &&
+          isValidId(userId) &&
+          isValidId(contactId) &&
+          userId == request.auth.uid &&
+          exists(/databases/$(database)/documents/users/$(userId));
+      }
+    }
+
+    // 3. Contact Requests (/contactRequests/{requestId})
+    match /contactRequests/{requestId} {
+      allow get: if isSignedIn() &&
+        isValidId(requestId) &&
+        (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+
+      allow list: if isSignedIn() &&
+        (existing().fromUid == request.auth.uid || existing().toUid == request.auth.uid);
+
+      allow create: if isVerifiedUser() &&
+        isValidId(requestId) &&
+        isValidContactRequest(incoming()) &&
+        incoming().fromUid == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(incoming().fromUid)) &&
+        exists(/databases/$(database)/documents/users/$(incoming().toUid));
+
+      allow update: if isVerifiedUser() &&
+        isValidId(requestId) &&
+        isValidContactRequest(incoming()) &&
+        existing().status == 'pending' &&
+        existing().toUid == request.auth.uid &&
+        incoming().fromUid == existing().fromUid &&
+        incoming().toUid == existing().toUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().status in ['accepted', 'declined'] &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    // 4. Encrypted Group Chats (/groups/{groupId})
+    match /groups/{groupId} {
+      allow get: if isSignedIn() &&
+        isValidId(groupId) &&
+        isGroupMember(groupId);
+
+      allow list: if isSignedIn() &&
+        existing().creatorUid == request.auth.uid;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(groupId) &&
+        isValidChatGroup(incoming(), groupId) &&
+        incoming().creatorUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        existsAfter(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+
+      allow update: if isVerifiedUser() &&
+        isValidId(groupId) &&
+        isValidChatGroup(incoming(), groupId) &&
+        incoming().creatorUid == existing().creatorUid &&
+        incoming().groupId == existing().groupId &&
+        incoming().passboxCode == existing().passboxCode &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isGroupMember(groupId) &&
+        (
+          // Action 1: Owner updates group metadata
+          (existing().creatorUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'memberCount', 'updatedAt'])) ||
+          // Action 2: Member updates memberCount on invite
+          (incoming().diff(existing()).affectedKeys().hasOnly(['memberCount', 'updatedAt']))
+        );
+
+      allow delete: if false;
+
+      // 5. Group Members Subcollection (/groups/{groupId}/members/{memberUid})
+      match /members/{memberUid} {
+        allow get: if isSignedIn() &&
+          isValidId(groupId) &&
+          isValidId(memberUid) &&
+          (memberUid == request.auth.uid || isGroupMember(groupId));
+
+        allow list: if isSignedIn() &&
+          existing().memberUid == request.auth.uid;
+
+        allow create: if isVerifiedUser() &&
+          isValidId(groupId) &&
+          isValidId(memberUid) &&
+          isValidGroupMember(incoming(), groupId, memberUid) &&
+          incoming().invitedByUid == request.auth.uid &&
+          incoming().joinedAt == request.time &&
+          existsAfter(/databases/$(database)/documents/groups/$(groupId)) &&
+          (
+            // Self-registration as owner during group creation
+            (memberUid == request.auth.uid && incoming().role == 'owner' &&
+              getAfter(/databases/$(database)/documents/groups/$(groupId)).data.creatorUid == request.auth.uid) ||
+            // Existing group member inviting another existing user
+            (incoming().role == 'member' && isGroupMember(groupId) &&
+              exists(/databases/$(database)/documents/users/$(memberUid)))
+          );
+
+        allow update, delete: if false;
+      }
+
+      // 6. Group Encrypted Messages Subcollection (/groups/{groupId}/messages/{messageId})
+      match /messages/{messageId} {
+        allow get: if isSignedIn() &&
+          isValidId(groupId) &&
+          isValidId(messageId) &&
+          exists(/databases/$(database)/documents/groups/$(groupId)) &&
+          isGroupMember(groupId);
+
+        allow list: if isSignedIn() &&
+          existing().senderUid == request.auth.uid;
+
+        allow create: if isVerifiedUser() &&
+          isValidId(groupId) &&
+          isValidId(messageId) &&
+          isValidEncryptedMessage(incoming(), messageId) &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/groups/$(groupId)) &&
+          isGroupMember(groupId);
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}

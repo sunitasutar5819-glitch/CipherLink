@@ -1,0 +1,11 @@
+{
+  "name": "CipherLink E2EE",
+  "description": "End-to-end encrypted peer-to-peer chat, voice recording, GIF messaging, chunked unlimited file and video streaming, and WebRTC video/voice/screen-share workspace authenticated via 6-digit alphanumeric passbox codes.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
