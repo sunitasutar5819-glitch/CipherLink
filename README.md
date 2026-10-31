@@ -1,6 +1,6 @@
 # CipherLink E2EE 🛡️
 
-**CipherLink** is a zero-trust, peer-to-peer encrypted communications platform built for browser-based private collaboration. Operating entirely client-side, it derives session keys using deterministic 6-digit passbox codes, enabling secure real-time messaging, chunked file streaming, encrypted voice/video calls, and advanced screen sharing without central database storage.
+**CipherLink** is a peer-to-peer encrypted communications platform built for browser-based private collaboration. Operating entirely client-side, it derives session keys using deterministic 6-digit passbox codes, enabling secure real-time messaging, chunked file streaming, encrypted voice/video calls, and advanced screen sharing without central database storage.
 
 ---
 
